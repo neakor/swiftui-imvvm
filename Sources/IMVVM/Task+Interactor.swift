@@ -23,23 +23,25 @@
 import Combine
 import Foundation
 
-extension AnyCancellable {
-  /// When the interactor deinits, the subscription is cancelled.
+extension Task: Cancellable {}
+
+extension Task {
+  /// When the interactor deinits, the task is cancelled.
   ///
-  /// This function provides the utility to manage Combine subscriptions inside a `Interactor` implementation. For
+  /// This function provides the utility to manage Task lifecycle inside a `Interactor` implementation. For
   /// example:
   ///
   ///     class MyInteractor: Interactor {
   ///       func buttonDidTap() {
-  ///         somePublisher
-  ///           .sink { ... }
-  ///           .cancelOnDeinit(of: self)
+  ///         Task {
+  ///           ...
+  ///         }
+  ///         .cancelOnDeinit(of: self)
   ///       }
   ///     }
   ///
-  /// - Note: Because this function causes the given interactor to stongly retain the subscription, this means the
-  /// subscription itself should not strongly retain the interactor. Otherwise a retain cycle would occur causing
-  /// memory leaks.
+  /// - Note: Because this function causes the given interactor to stongly retain the task, this means the task
+  /// itself should not strongly retain the interactor. Otherwise a retain cycle would occur causing memory leaks.
   ///
   /// This function is thread-safe. Invocations of this function to the same interactor instance can be performed on
   /// the different threads.
@@ -49,30 +51,30 @@ extension AnyCancellable {
   /// See `ViewLifecycleObserver` for more details.
   ///
   /// - Parameters:
-  ///   - interactor: The interactor to bind the subscription's lifecycle to.
+  ///   - interactor: The interactor to bind the task's lifecycle to.
   public func cancelOnDeinit<InteractorType: Interactor>(of interactor: InteractorType) {
     if !interactor.isLoaded {
       fatalError("\(interactor) has not been loaded")
     }
-    interactor.deinitCancelBag.store(self)
+    interactor.deinitCancelBag.store(AnyCancellable(self))
   }
 
-  /// When the interactor's view disappears, the subscription is cancelled.
+  /// When the interactor's view disappears, the task is cancelled.
   ///
-  /// This function provides the utility to manage Combine subscriptions inside a `Interactor` implementation. For
+  /// This function provides the utility to manage Task lifecycle inside a `Interactor` implementation. For
   /// example:
   ///
   ///     class MyInteractor: Interactor {
   ///       func buttonDidTap() {
-  ///         somePublisher
-  ///           .sink { ... }
-  ///           .cancelOnViewDidDisappear(of: self)
+  ///         Task {
+  ///           ...
+  ///         }
+  ///         .cancelOnViewDidDisappear(of: self)
   ///       }
   ///     }
   ///
-  /// - Note: Because this function causes the given interactor to stongly retain the subscription, this means the
-  /// subscription itself should not strongly retain the interactor. Otherwise a retain cycle would occur causing
-  /// memory leaks.
+  /// - Note: Because this function causes the given interactor to stongly retain the task, this means the task
+  /// itself should not strongly retain the interactor. Otherwise a retain cycle would occur causing memory leaks.
   ///
   /// This function is thread-safe. Invocations of this function to the same interactor instance can be performed on
   /// the different threads.
@@ -82,11 +84,11 @@ extension AnyCancellable {
   /// should be bound to the lifecycle of a `View`. See `ViewLifecycleObserver` for more details.
   ///
   /// - Parameters:
-  ///   - interactor: The interactor to bind the subscription's lifecycle to.
+  ///   - interactor: The interactor to bind the task's lifecycle to.
   public func cancelOnViewDidDisappear<InteractorType: Interactor>(of interactor: InteractorType) {
     if !interactor.hasViewAppeared {
       fatalError("\(interactor)'s view has not appeared")
     }
-    interactor.viewAppearanceCancelBag.store(self)
+    interactor.viewAppearanceCancelBag.store(AnyCancellable(self))
   }
 }
