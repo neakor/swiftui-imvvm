@@ -30,12 +30,21 @@ import SwiftUI
 ///
 /// This protocol conforms to `ObservableObject` to support retaining this instance as a `@StateObject` in the
 /// view that performs the `bind(observer:)` function.
-public protocol ViewLifecycleObserver: ObservableObject {
+public protocol ViewWithModelLifecycleObserver: ObservableObject {
+  /// The model of the view that this observer may mutate to provide data to the view.
+  associatedtype ViewModelType: ViewModel
+
   /// Notify the observer when the bound `View` has appeared.
-  func viewDidAppear()
+  ///
+  /// - Parameters:
+  ///   - viewModel: The model of the view that this observer may mutate to provide data to the view.
+  func viewDidAppear(viewModel: ViewModelType)
 
   /// Notify the observer when the bound `View` has disappeared.
-  func viewDidDisappear()
+  ///
+  /// - Parameters:
+  ///   - viewModel: The model of the view that this observer may mutate to provide data to the view.
+  func viewDidDisappear(viewModel: ViewModelType)
 }
 
 extension View {
@@ -43,29 +52,17 @@ extension View {
   ///
   /// - Parameters:
   ///   - observer: The observer to be bound and receive this view's lifecycle events.
+  ///   - viewModel: The model of this view that this observer may mutate to provide data to the view.
   /// - Returns: This view with the observer bound.
-  public func bind<Observer: ViewLifecycleObserver>(observer: Observer) -> some View {
+  public func bind<Observer: ViewWithModelLifecycleObserver>(
+    observer: Observer,
+    viewModel: Observer.ViewModelType
+  ) -> some View {
     onAppear {
-      observer.viewDidAppear()
+      observer.viewDidAppear(viewModel: viewModel)
     }
     .onDisappear {
-      observer.viewDidDisappear()
+      observer.viewDidDisappear(viewModel: viewModel)
     }
-  }
-
-  /// Bind the given lifecycle observer to this view.
-  ///
-  /// - Parameters:
-  ///   - observer: The observer to be bound and receive this view's lifecycle events.
-  /// - Returns: The type erased version of thisview with the observer bound.
-  @available(*, deprecated, message: "Binding a view with an observer should happen inside a view.")
-  public func bindTypeErased<Observer: ViewLifecycleObserver>(observer: Observer) -> TypeErasedView {
-    onAppear {
-      observer.viewDidAppear()
-    }
-    .onDisappear {
-      observer.viewDidDisappear()
-    }
-    .typeErased()
   }
 }

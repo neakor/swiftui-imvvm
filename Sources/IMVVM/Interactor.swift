@@ -23,30 +23,6 @@
 import Combine
 import Foundation
 
-/// The observer of an `Interactor`'s lifecycle events.
-///
-/// This allows the implementation of this protocol to bind to the interactor's lifecycle events.
-public protocol InteractorLifecycleObserver {
-  /// Override this function to setup the subscriptions the receiver requires on start.
-  ///
-  /// All the created subscriptions returned from this function are bound to the deinit lifecycle of the interactor.
-  ///
-  ///     class MyInteractor: Interactor {
-  ///       @CancellableBuilder
-  ///       override func onLoad() -> [AnyCancellable] {
-  ///         myDataStream
-  ///           .sink {...}
-  ///
-  ///         mySecondDataStream
-  ///           .sink {...}
-  ///       }
-  ///     }
-  ///
-  /// - Returns: An array of subscription `AnyCancellable`.
-  @CancellableBuilder
-  func onLoad() -> [AnyCancellable]
-}
-
 /// The base class of an object providing data to a view's interactor and functionality to handle user events such as
 /// button taps.
 ///
@@ -60,16 +36,37 @@ public protocol InteractorLifecycleObserver {
 /// subscription cancellables. Subclasses should override the lifecycle functions such as `onLoad` and `onViewAppear`
 /// to setup all the necessary subscriptions.
 ///
-/// An `interactor` is a `ViewLifecycleObserver`. It should be bound to the associated view via the view's
-/// `interactable()` modifier. This allows the interactor to activate its lifecycle functions.
+/// - Important: An `interactor` is a `ViewLifecycleObserver`. It should be bound to the associated
+/// view via the view's `bind(observer:)` modifier, inside the view implementation. This allows the interactor to
+/// activate its lifecycle functions.
 ///
-/// - Note: An `interactor` is not an `ObservableObject` since it should NOT directly provide view data to the
-/// associated view. Instead, it should provide network data to a `ViewModel` that transforms it into presentation
-/// data for the view to display.
+///     struct MyView: View {
+///       @StateObject var interactor: MyInteractor
 ///
-/// - Important: An interactor must be bound to its corresponding view via the view's `bind(observer:)` function
-/// in order for the interactor receive lifecycle events. This should be performed before the view is attached to the
-/// view hierarchy.
+///       body: some View {
+///         myContent
+///           .bind(observer: interactor)
+///       }
+///     }
+///
+/// The view must declare and reference the interactor as a `@StateObject`. This allows different
+/// instances of the view to reference the same interactor instance, therefore maintaining the states of the view's
+/// data. This occurs when multiple instances of the same view are instantiated over time by SwiftUI, as the view
+/// updates and changes due to data changes or user interactions. And because the interactor is a `@StateObject`,
+/// the binding of the interactor via the `bind(observer:)` modifier must be inside the view's `body`.
+///
+/// In order to avoid SwiftUI retaining duplicate instances of the interactor, when the interactor is passed into the
+/// view's constructor, it might be passed in as an `@autoclosure`. In other words, invoking the interactor's
+/// constructor must be nested within the view's constructor:
+///
+///     func makeMyView() -> some View {
+///       MyView(interactor: MyInteractor(...))
+///     }
+///
+/// - Note: An `interactor` should NOT directly provide view data to the associated view. It should only contain
+/// business logic. If the interactor needs to update the view with new data, it should provide the data to a
+/// `ViewModel` that transforms it into presentation data for the view to display. Please see `ViewModelInteractor`
+/// for details on this use case.
 open class Interactor {
   /// Stores cancellables until deinit.
   let deinitCancelBag = SynchronizedCancelBag()
@@ -103,8 +100,7 @@ open class Interactor {
   /// Override this function to perform logic or setup the subscriptions when the view has appeared.
   ///
   /// All the created subscriptions returned from this function are bound to the disappearance of this interactor's
-  /// corresponding view. This requires this interactor to be bound to the lifecycle of a view via the view's
-  /// `interactable()` modifier. See `InteractableView` for more details.
+  /// corresponding view.
   ///
   ///     class MyInteractor: Interactor {
   ///       @CancellableBuilder
@@ -133,29 +129,52 @@ open class Interactor {
 // MARK: - ViewLifecycleObserver Conformance
 
 extension Interactor: ViewLifecycleObserver {
-  public final func viewDidAppear() {
+  enum ViewEventOccurrence {
+    case invalid
+    case valid
+    case firstTime
+  }
+
+  @discardableResult
+  func processViewDidAppear() -> ViewEventOccurrence {
     guard !hasViewAppeared else {
-      return
+      return .invalid
     }
     hasViewAppeared = true
 
+    var occurrence = ViewEventOccurrence.valid
     if !isLoaded {
       isLoaded = true
+      occurrence = .firstTime
+
       deinitCancelBag.store(onLoad())
     }
 
     viewAppearanceCancelBag.store(onViewAppear())
+
+    return occurrence
   }
 
-  public final func viewDidDisappear() {
+  @discardableResult
+  func processViewDidDisappear() -> ViewEventOccurrence {
     guard hasViewAppeared else {
-      return
+      return .invalid
     }
     hasViewAppeared = false
 
     viewAppearanceCancelBag.cancelAll()
 
     onViewDisappear()
+
+    return .valid
+  }
+
+  public final func viewDidAppear() {
+    processViewDidAppear()
+  }
+
+  public final func viewDidDisappear() {
+    processViewDidDisappear()
   }
 }
 
