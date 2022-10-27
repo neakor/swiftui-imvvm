@@ -26,6 +26,12 @@ import Foundation
 extension Task: Cancellable {}
 
 extension Task {
+  public var anyCancellable: AnyCancellable {
+    AnyCancellable(cancel)
+  }
+}
+
+extension Task {
   /// When the interactor deinits, the task is cancelled.
   ///
   /// This function provides the utility to manage Task lifecycle inside a `Interactor` implementation. For
