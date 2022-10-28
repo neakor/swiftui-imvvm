@@ -30,7 +30,7 @@ import SwiftUI
 ///
 /// This protocol conforms to `ObservableObject` to support retaining this instance as a `@StateObject` in the
 /// view that performs the `bind(observer:)` function.
-public protocol ViewWithModelLifecycleObserver: ObservableObject {
+public protocol ViewWithModelLifecycleObserver<ViewModelType>: ObservableObject {
   /// The model of the view that this observer may mutate to provide data to the view.
   associatedtype ViewModelType: ViewModel
 
