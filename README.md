@@ -1,5 +1,5 @@
 # Overview
-At a high-level the architectural patterns used for all iOS apps are composed of the following pieces:
+At a high-level the architectural patterns used are composed of the following pieces:
   - [iMVVM with SwiftUI](#imvvm-with-swiftui)
   - [Dependency Injection](#dependency-injection)
   - [Plugins](#plugins)
