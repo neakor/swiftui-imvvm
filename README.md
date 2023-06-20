@@ -5,9 +5,8 @@ At a high-level the architectural patterns used are composed of the following pi
   - [Plugins](#plugins)
 
 # iMVVM with SwiftUI
-All iOS applications should use the iMVVM with SwiftUI architecture. This section describes each of the components
-and how they should be used. The source code in the Blueprint app is built using this architecture and can be used as
-a source code reference.
+This section describes each of the components and how they should be used. The source code in the Blueprint app is
+built using this architecture and can be used as a source code reference.
 
 ![Data Flow Diagram](Diagrams/data_flow.png)
 ![Ownership Diagram](Diagrams/ownership.png)
